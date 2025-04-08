@@ -8,7 +8,7 @@
 
 ### Pipeline Stages
 1. Scraper/Producer
-    - Collects data from specified sources
+    - Collects data from specified sources (floorsheet of merolagani.com)
     - Outputs raw data in JSON format
     
 2. Consumer
