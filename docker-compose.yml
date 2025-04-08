@@ -1,0 +1,94 @@
+version: '1.1'
+
+services:
+  spark-master:
+    image: bitnami/spark:3.4
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+      - SPARK_DRIVER_EXTRA_CLASSPATH=/opt/bitnami/spark/jars/postgresql-42.7.5.jar
+      - SPARK_EXECUTOR_EXTRA_CLASSPATH=/opt/bitnami/spark/jars/postgresql-42.7.5.jar
+    ports:
+      - "8080:8080"  
+      - "7077:7077" 
+    volumes:
+      - ./data:/data
+      - ./jars/postgresql-42.7.5.jar:/opt/bitnami/spark/jars/postgresql-42.7.5.jar
+
+  spark-worker:
+    image: bitnami/spark:3.4
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_WORKER_CORES=2
+      - SPARK_DRIVER_EXTRA_CLASSPATH=/opt/bitnami/spark/jars/postgresql-42.7.5.jar
+      - SPARK_EXECUTOR_EXTRA_CLASSPATH=/opt/bitnami/spark/jars/postgresql-42.7.5.jar
+    volumes:
+      - ./jars/postgresql-42.7.5.jar:/opt/bitnami/spark/jars/postgresql-42.7.5.jar
+
+  jupyter:
+    image: jupyter/pyspark-notebook
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./jars/postgresql-42.7.5.jar:/home/jovyan/postgresql-42.7.5.jar
+    depends_on:
+      - spark-master
+      - postgres
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+    
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  postgres:
+    image: postgres:13-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin  
+      POSTGRES_DB: nepse
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data # Persistent storage
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d nepse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+volumes:
+  pgdata:
