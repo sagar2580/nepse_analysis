@@ -28,6 +28,6 @@
 
 ### Customization
 To adapt this pipeline for your specific needs:
-    Scraper: Modify the scraper_producer() function in data_pipeline.py
-    Transformation: Edit the notebooks/transformation.ipynb file
-    Visualization: Update the visualization code 
+   -  Scraper: Modify the scraper_producer() function in data_pipeline.py
+   - Transformation: Edit the notebooks/transformation.ipynb file
+   - Visualization: Update the visualization code 
